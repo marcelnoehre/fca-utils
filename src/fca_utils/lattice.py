@@ -228,3 +228,35 @@ def extent_of_concept(lattice: ConceptLattice, index: int) -> Set[int]:
             extent.add((child, obj))
             
     return extent
+
+def join_irreducibles(lattice: ConceptLattice) -> Iterable[int]:
+    '''
+    Get all join-irreducible concepts in the lattice.
+
+    Parameters
+    ----------
+    lattice : ConceptLattice
+        The concept lattice.
+
+    Returns
+    -------
+    join_irreducibles : Iterable[int]
+        A list of indices representing all join-irreducible concepts in the lattice.
+    '''
+    return list(reversed([node for node, child in lattice.children_dict.items() if len(child) == 1]))
+
+def meet_irreducibles(lattice: ConceptLattice) -> Iterable[int]:
+    '''
+    Get all meet-irreducible concepts in the lattice.
+
+    Parameters
+    ----------
+    lattice : ConceptLattice
+        The concept lattice.
+
+    Returns
+    -------
+    meet_irreducibles : Iterable[int]
+        A list of indices representing all meet-irreducible concepts in the lattice.
+    '''
+    return [node for node, parent in lattice.parents_dict.items() if len(parent) == 1]
