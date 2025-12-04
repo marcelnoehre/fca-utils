@@ -89,6 +89,67 @@ class AdditivityCheck():
                 queue.append(node)
 
         return self.bottom_up_additive == self.coordinates
+    
+    def check_top_down_additivity(self):
+        '''
+        Check top-down additivity of the coordinate assignment.
+
+        X := M
+        (A, B) -> M \ B
+        
+        Assign vectors to meet-irreducible elements and sum them up the lattice
+        '''
+        # base vectors:
+        # root node (top) as (0, 0)
+        # vector if meet-irreducibles
+        # sum of meet-irreducibles for other nodes
+        self.base_vectors_top = copy.deepcopy(self.meet_irreducibles)
+        self.base_vectors_top[self.top] = (0, 0)
+
+        self.top_down_additive = {}
+        self.top_down_additive[self.top] = self.coordinates[self.top]
+
+        queue = deque(self.concept_lattice.children(self.top))
+        while queue:
+            node = queue.popleft()
+            parents = all_parents(self.concept_lattice, node)
+            
+            # all parents have to be processed first
+            if all(parent in self.top_down_additive for parent in parents):
+                if node in self.meet_irreducibles:
+                    parent = self.concept_lattice.parents(node)
+                    parent_vector = self.base_vectors_top[list(parent)[0]]
+                    
+                    # if the parent is a meet-irreducible, sum up the chain until a non-meet-irreducible is found
+                    while list(parent)[0] in self.meet_irreducibles:
+                        parent = self.concept_lattice.parents(list(parent)[0])
+                        parent_vector = tuple(parent_vector[i] + self.base_vectors_top[list(parent)[0]][i] for i in range(len(self.realizer)))
+
+                    # top node - (base vector of meet-irreducible + base vector of the single parent)
+                    # ensures a positive base vector from parent to child
+                    self.top_down_additive[node] = tuple(self.coordinates[self.top][i] - (self.base_vectors_top[node][i] + parent_vector[i]) for i in range(len(self.realizer)))
+
+                else:
+                    pos = tuple(0 for _ in self.realizer)
+                    for parent in parents:
+                        if parent in self.meet_irreducibles:
+                            # sum base vectors of all meet-irreducible parents
+                            pos = tuple(pos[i] + self.base_vectors_top[parent][i] for i in range(len(self.realizer)))
+
+                    # add sum as base vector for further nodes depending on this node
+                    self.base_vectors_top[node] = pos
+                    self.top_down_additive[node] = tuple(self.coordinates[self.top][i] - pos[i] for i in range(len(self.realizer)))
+                    
+                # add children if not already processed or in queue
+                for p in self.concept_lattice.children(node):
+                    if p not in queue and p not in self.top_down_additive:
+                        queue.append(p)
+
+            else:
+                # re-add to queue if parents not processed yet
+                queue.append(node)
+
+        return self.top_down_additive == self.coordinates
         
 class LinearEquationSolver:
     '''
