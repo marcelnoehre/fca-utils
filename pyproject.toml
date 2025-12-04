@@ -1,0 +1,18 @@
+[project]
+name = "fca-utils"
+version = "0.0.1"
+description = "Utility functions for research in the field of Formal Concept Analysis"
+readme = "README.md"
+authors = [
+    { name = "Marcel Nöhre", email = "noehre@cs.uni-kassel.de" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "numpy",
+    "networkx",
+    "fcapy"
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
