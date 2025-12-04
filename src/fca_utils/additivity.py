@@ -6,6 +6,90 @@ from sympy import symbols, Eq, solve, sympify
 from src.fca_utils.context import *
 from src.fca_utils.lattice import *
 
+class AdditivityCheck():
+
+    def __init__(self,
+            lattice: ConceptLattice,
+            realizer: List[List[int]],
+            coordinates: Dict[int, Tuple[int]]
+        ):
+        self.lattice = lattice
+        self.realizer = realizer
+        self.coordinates = coordinates
+        self.objects = extent_of_concept(self.lattice, self.realizer[0][0])
+        self.features = intent_of_concept(self.lattice, self.realizer[0][-1])
+        self.top = 0
+        self.bottom = len(lattice.to_networkx().nodes) - 1
+        self.join_irreducibles = {
+            tuple(self.coordinates[node][i] - self.coordinates[list(self.lattice.children_dict[node])[0]][i]
+                for i in range(len(self.realizer))
+            )
+            for node in self.lattice.to_networkx().nodes
+        }
+        self.meet_irreducibles = {
+            tuple(self.coordinates[list(self.lattice.parents_dict[node])[0]][i] - self.coordinates[node][i] for i in range(len(self.realizer)))
+            for node in self.lattice.to_networkx().nodes
+        }
+
+    def check_bottom_up_additivity(self):
+        '''
+        Check bottom-up additivity of the coordinate assignment.
+
+        X := G
+        (A, B) -> A
+        
+        Assign vectors to join-irreducible elements and sum them up the lattice
+        '''
+        # root node (bottom) as (0, 0)
+        # vector if join-irreducibles
+        # sum of join-irreducibles for other nodes
+        self.base_vectors_bottom = copy.deepcopy(self.join_irreducibles)
+        self.base_vectors_bottom[self.bottom] = self.coordinates[self.bottom]
+
+        self.bottom_up_additive = {}
+        self.bottom_up_additive[self.bottom] = self.coordinates[self.bottom]
+
+        queue = deque(self.lattice.parents(self.bottom))
+        while queue:
+            node = queue.popleft()
+            children = all_children(self.lattice, node)
+            
+            # all children have to be processed first
+            if all(child in self.bottom_up_additive for child in children):
+                if node in self.join_irreducibles:
+                    child = self.lattice.children(node)
+                    child_vector = self.base_vectors_bottom[list(child)[0]]
+                    
+                    # if the child is a join-irreducible, sum up the chain until a non-join-irreducible is found
+                    while list(child)[0] in self.join_irreducibles:
+                        child = self.lattice.children(list(child)[0])
+                        child_vector = tuple(child_vector[i] + self.base_vectors_bottom[list(child)[0]][i] for i in range(len(self.realizer)))
+
+                    # base vector of join-irreducible + base vector of the single child
+                    self.bottom_up_additive[node] = tuple(self.base_vectors_bottom[node][i] + self.base_vectors_bottom[list(self.lattice.children(node))[0]][i] for i in range(len(self.realizer)))
+
+                else:
+                    pos = tuple(0 for _ in self.realizer)
+                    for child in all_children(self.lattice, node):
+                        # sum base vectors of all join-irreducible children
+                        if child in self.join_irreducibles:
+                            pos = tuple(pos[i] + self.base_vectors_bottom[child][i] for i in range(len(self.realizer)))
+                    
+                    # add sum as base vector for further nodes depending on this node
+                    self.base_vectors_bottom[node] = pos
+                    self.bottom_up_additive[node] = pos
+
+                # add parents if not already processed or in queue
+                for p in self.lattice.parents(node):
+                    if p not in queue and p not in self.bottom_up_additive:
+                        queue.append(p)
+
+            else:
+                # re-add to queue if children not processed yet
+                queue.append(node)
+
+        return self.bottom_up_additive == self.coordinates
+        
 class LinearEquationSolver:
     '''
     Solve a system of linear equations derived from a concept lattice structure.
