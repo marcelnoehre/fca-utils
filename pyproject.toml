@@ -10,7 +10,8 @@ requires-python = ">=3.11"
 dependencies = [
     "numpy",
     "networkx",
-    "fcapy"
+    "fcapy",
+    "sympy"
 ]
 
 [build-system]
