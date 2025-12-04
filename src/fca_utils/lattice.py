@@ -229,7 +229,7 @@ def extent_of_concept(lattice: ConceptLattice, index: int) -> Set[int]:
             
     return extent
 
-def join_irreducibles(lattice: ConceptLattice) -> Iterable[int]:
+def get_join_irreducibles(lattice: ConceptLattice) -> Iterable[int]:
     '''
     Get all join-irreducible concepts in the lattice.
 
@@ -245,7 +245,7 @@ def join_irreducibles(lattice: ConceptLattice) -> Iterable[int]:
     '''
     return list(reversed([node for node, child in lattice.children_dict.items() if len(child) == 1]))
 
-def meet_irreducibles(lattice: ConceptLattice) -> Iterable[int]:
+def get_meet_irreducibles(lattice: ConceptLattice) -> Iterable[int]:
     '''
     Get all meet-irreducible concepts in the lattice.
 

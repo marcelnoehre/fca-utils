@@ -20,16 +20,7 @@ class AdditivityCheck():
         self.features = intent_of_concept(self.lattice, self.realizer[0][-1])
         self.top = 0
         self.bottom = len(lattice.to_networkx().nodes) - 1
-        self.join_irreducibles = {
-            tuple(self.coordinates[node][i] - self.coordinates[list(self.lattice.children_dict[node])[0]][i]
-                for i in range(len(self.realizer))
-            )
-            for node in self.lattice.to_networkx().nodes
-        }
-        self.meet_irreducibles = {
-            tuple(self.coordinates[list(self.lattice.parents_dict[node])[0]][i] - self.coordinates[node][i] for i in range(len(self.realizer)))
-            for node in self.lattice.to_networkx().nodes
-        }
+        self.dimensions = [chr(97 + i) for i in range(len(realizer))]
 
     def check_bottom_up_additivity(self):
         '''
@@ -40,11 +31,17 @@ class AdditivityCheck():
         
         Assign vectors to join-irreducible elements and sum them up the lattice
         '''
+        join_irreducibles = {
+            node: tuple(self.coordinates[node][i] - self.coordinates[list(self.lattice.children_dict[node])[0]][i]
+                for i in range(len(self.realizer))
+            )
+            for node in get_join_irreducibles(self.lattice)
+        }
         # root node (bottom) as (0, 0)
         # vector if join-irreducibles
         # sum of join-irreducibles for other nodes
-        self.base_vectors_bottom = copy.deepcopy(self.join_irreducibles)
-        self.base_vectors_bottom[self.bottom] = self.coordinates[self.bottom]
+        base_vectors_bottom = copy.deepcopy(join_irreducibles)
+        base_vectors_bottom[self.bottom] = self.coordinates[self.bottom]
 
         self.bottom_up_additive = {}
         self.bottom_up_additive[self.bottom] = self.coordinates[self.bottom]
@@ -56,27 +53,27 @@ class AdditivityCheck():
             
             # all children have to be processed first
             if all(child in self.bottom_up_additive for child in children):
-                if node in self.join_irreducibles:
+                if node in join_irreducibles:
                     child = self.lattice.children(node)
-                    child_vector = self.base_vectors_bottom[list(child)[0]]
+                    child_vector = base_vectors_bottom[list(child)[0]]
                     
                     # if the child is a join-irreducible, sum up the chain until a non-join-irreducible is found
-                    while list(child)[0] in self.join_irreducibles:
+                    while list(child)[0] in join_irreducibles:
                         child = self.lattice.children(list(child)[0])
-                        child_vector = tuple(child_vector[i] + self.base_vectors_bottom[list(child)[0]][i] for i in range(len(self.realizer)))
+                        child_vector = tuple(child_vector[i] + base_vectors_bottom[list(child)[0]][i] for i in range(len(self.realizer)))
 
                     # base vector of join-irreducible + base vector of the single child
-                    self.bottom_up_additive[node] = tuple(self.base_vectors_bottom[node][i] + self.base_vectors_bottom[list(self.lattice.children(node))[0]][i] for i in range(len(self.realizer)))
+                    self.bottom_up_additive[node] = tuple(base_vectors_bottom[node][i] + base_vectors_bottom[list(self.lattice.children(node))[0]][i] for i in range(len(self.realizer)))
 
                 else:
                     pos = tuple(0 for _ in self.realizer)
                     for child in all_children(self.lattice, node):
                         # sum base vectors of all join-irreducible children
-                        if child in self.join_irreducibles:
-                            pos = tuple(pos[i] + self.base_vectors_bottom[child][i] for i in range(len(self.realizer)))
+                        if child in join_irreducibles:
+                            pos = tuple(pos[i] + base_vectors_bottom[child][i] for i in range(len(self.realizer)))
                     
                     # add sum as base vector for further nodes depending on this node
-                    self.base_vectors_bottom[node] = pos
+                    base_vectors_bottom[node] = pos
                     self.bottom_up_additive[node] = pos
 
                 # add parents if not already processed or in queue
@@ -95,53 +92,57 @@ class AdditivityCheck():
         Check top-down additivity of the coordinate assignment.
 
         X := M
-        (A, B) -> M \ B
+        (A, B) -> M \\ B
         
         Assign vectors to meet-irreducible elements and sum them up the lattice
         '''
+        meet_irreducibles = {
+            node: tuple(self.coordinates[list(self.lattice.parents_dict[node])[0]][i] - self.coordinates[node][i] for i in range(len(self.realizer)))
+            for node in get_meet_irreducibles(self.lattice)
+        }
         # base vectors:
         # root node (top) as (0, 0)
         # vector if meet-irreducibles
         # sum of meet-irreducibles for other nodes
-        self.base_vectors_top = copy.deepcopy(self.meet_irreducibles)
-        self.base_vectors_top[self.top] = (0, 0)
+        base_vectors_top = copy.deepcopy(meet_irreducibles)
+        base_vectors_top[self.top] = (0, 0)
 
         self.top_down_additive = {}
         self.top_down_additive[self.top] = self.coordinates[self.top]
 
-        queue = deque(self.concept_lattice.children(self.top))
+        queue = deque(self.lattice.children(self.top))
         while queue:
             node = queue.popleft()
-            parents = all_parents(self.concept_lattice, node)
+            parents = all_parents(self.lattice, node)
             
             # all parents have to be processed first
             if all(parent in self.top_down_additive for parent in parents):
-                if node in self.meet_irreducibles:
-                    parent = self.concept_lattice.parents(node)
-                    parent_vector = self.base_vectors_top[list(parent)[0]]
+                if node in meet_irreducibles:
+                    parent = self.lattice.parents(node)
+                    parent_vector = base_vectors_top[list(parent)[0]]
                     
                     # if the parent is a meet-irreducible, sum up the chain until a non-meet-irreducible is found
-                    while list(parent)[0] in self.meet_irreducibles:
-                        parent = self.concept_lattice.parents(list(parent)[0])
-                        parent_vector = tuple(parent_vector[i] + self.base_vectors_top[list(parent)[0]][i] for i in range(len(self.realizer)))
+                    while list(parent)[0] in meet_irreducibles:
+                        parent = self.lattice.parents(list(parent)[0])
+                        parent_vector = tuple(parent_vector[i] + base_vectors_top[list(parent)[0]][i] for i in range(len(self.realizer)))
 
                     # top node - (base vector of meet-irreducible + base vector of the single parent)
                     # ensures a positive base vector from parent to child
-                    self.top_down_additive[node] = tuple(self.coordinates[self.top][i] - (self.base_vectors_top[node][i] + parent_vector[i]) for i in range(len(self.realizer)))
+                    self.top_down_additive[node] = tuple(self.coordinates[self.top][i] - (base_vectors_top[node][i] + parent_vector[i]) for i in range(len(self.realizer)))
 
                 else:
                     pos = tuple(0 for _ in self.realizer)
                     for parent in parents:
-                        if parent in self.meet_irreducibles:
+                        if parent in meet_irreducibles:
                             # sum base vectors of all meet-irreducible parents
-                            pos = tuple(pos[i] + self.base_vectors_top[parent][i] for i in range(len(self.realizer)))
+                            pos = tuple(pos[i] + base_vectors_top[parent][i] for i in range(len(self.realizer)))
 
                     # add sum as base vector for further nodes depending on this node
-                    self.base_vectors_top[node] = pos
+                    base_vectors_top[node] = pos
                     self.top_down_additive[node] = tuple(self.coordinates[self.top][i] - pos[i] for i in range(len(self.realizer)))
                     
                 # add children if not already processed or in queue
-                for p in self.concept_lattice.children(node):
+                for p in self.lattice.children(node):
                     if p not in queue and p not in self.top_down_additive:
                         queue.append(p)
 
@@ -150,7 +151,65 @@ class AdditivityCheck():
                 queue.append(node)
 
         return self.top_down_additive == self.coordinates
+    
+    def check_combined_additivity(self):
+        '''
+        Check combined additivity of the coordinate assignment.
+
+        X := G U M
+        (A, B) -> A U (M \\ B)
+
+        Sum up the base vectors assigned to each concept by the objects and missing features.
+        '''
+        equations = []
+        visited = set()
+        queue = deque([self.bottom])
+        base_vectors_combined = {}
+
+        while queue:
+            node = queue.popleft()
+
+            # objects and missing features for the current node
+            extent = extent_of_concept(self.lattice, node)
+            complement_intent = [f for f in self.features if f not in intent_of_concept(self.lattice, node)]
+            base_vectors_combined[node] = (list(extent), complement_intent)
+            vars = [v for _, v in extent] + [v for _, v in complement_intent]
+
+            # construct equations for the current node
+            for i, dim in enumerate(self.dimensions):
+                equations.append((' + '.join(f'{dim}_{v}' for v in vars) if vars else '0') + f' = {self.coordinates[node][i]}')
+
+            # add parents if not already processed or in queue
+            visited.add(node)
+            for p in self.lattice.parents(node):
+                if p not in queue and p not in visited:
+                    queue.append(p)
+
+        solver = LinearEquationSolver(
+            lattice=self.lattice,
+            coordinates=self.coordinates,
+            base_vectors=base_vectors_combined,
+            variables=[f'{dim}_{v}' for dim in self.dimensions for _, v in list(self.objects) + list(self.features)],
+            equations=equations,
+            dimensions=self.dimensions
+        )
         
+        success, vector_variables = solver.solve_linear_equations()
+        if not success:
+            return False
+        
+        self.combined_additive = {}
+        for node in self.lattice.to_networkx().nodes:
+            pos = tuple(0 for _ in self.dimensions)
+            for i, dim in enumerate(self.dimensions):
+                for vec in [s for group in base_vectors_combined[node] for (_, s) in group]:
+
+                    
+                    pos = tuple((pos[dim] + vector_variables[f'{self.dimensions[dim]}_{vec}'] if i == dim else pos[dim]) for dim in range(len(self.dimensions)))
+            self.combined_additive[node] = pos
+
+        return self.combined_additive == self.coordinates
+      
 class LinearEquationSolver:
     '''
     Solve a system of linear equations derived from a concept lattice structure.
@@ -182,10 +241,10 @@ class LinearEquationSolver:
         self.coordinates = coordinates
         self.base_vectors = base_vectors
 
-        self.variables = [f'{dim}_{var}' for dim in self.dimensions for var in variables]
-        self.symbols = symbols(' '.join(self.variables))
-        self.equations = [Eq(sympify(l), sympify(r)) for l,r in (eq.split('=') for eq in equations)]
         self.dimensions = dimensions
+        self.variables = [f'{var}' for var in variables]
+        self.symbols = symbols(' '.join(self.variables))
+        self.equations = [Eq(sympify(l), sympify(r)) for l,r in (eq.split(' = ') for eq in equations)]
 
         self.solution = solve(self.equations, self.symbols, dict=True)
 
@@ -256,6 +315,8 @@ class LinearEquationSolver:
 
         Returns
         -------
+        success : bool
+            True if the equations were successfully solved, False otherwise.
         vector_variables : Dict[str, int]
             A mapping from variable names to their solved integer values.
         '''
@@ -292,4 +353,4 @@ class LinearEquationSolver:
                 if p not in queue and p not in visited:
                     queue.append(p)
 
-        return self.vector_variables
+        return True, self.vector_variables
