@@ -30,6 +30,10 @@ class AdditivityCheck():
         (A, B) -> A
         
         Assign vectors to join-irreducible elements and sum them up the lattice
+
+        Returns
+        -------
+        additive : bool
         '''
         join_irreducibles = {
             node: tuple(self.coordinates[node][i] - self.coordinates[list(self.lattice.children_dict[node])[0]][i]
@@ -63,7 +67,7 @@ class AdditivityCheck():
                         child_vector = tuple(child_vector[i] + base_vectors_bottom[list(child)[0]][i] for i in range(len(self.realizer)))
 
                     # base vector of join-irreducible + base vector of the single child
-                    self.bottom_up_additive[node] = tuple(base_vectors_bottom[node][i] + base_vectors_bottom[list(self.lattice.children(node))[0]][i] for i in range(len(self.realizer)))
+                    self.bottom_up_additive[node] = tuple(base_vectors_bottom[node][i] + child_vector[i] for i in range(len(self.realizer)))
 
                 else:
                     pos = tuple(0 for _ in self.realizer)
@@ -95,6 +99,10 @@ class AdditivityCheck():
         (A, B) -> M \\ B
         
         Assign vectors to meet-irreducible elements and sum them up the lattice
+
+        Returns
+        -------
+        additive : bool
         '''
         meet_irreducibles = {
             node: tuple(self.coordinates[list(self.lattice.parents_dict[node])[0]][i] - self.coordinates[node][i] for i in range(len(self.realizer)))
@@ -105,7 +113,7 @@ class AdditivityCheck():
         # vector if meet-irreducibles
         # sum of meet-irreducibles for other nodes
         base_vectors_top = copy.deepcopy(meet_irreducibles)
-        base_vectors_top[self.top] = (0, 0)
+        base_vectors_top[self.top] = tuple(0 for _ in self.realizer)
 
         self.top_down_additive = {}
         self.top_down_additive[self.top] = self.coordinates[self.top]
@@ -160,6 +168,10 @@ class AdditivityCheck():
         (A, B) -> A U (M \\ B)
 
         Sum up the base vectors assigned to each concept by the objects and missing features.
+
+        Returns
+        -------
+        additive : bool
         '''
         equations = []
         visited = set()

@@ -260,3 +260,72 @@ def get_meet_irreducibles(lattice: ConceptLattice) -> Iterable[int]:
         A list of indices representing all meet-irreducible concepts in the lattice.
     '''
     return [node for node, parent in lattice.parents_dict.items() if len(parent) == 1]
+
+def is_distributive(lattice: ConceptLattice) -> bool:
+    '''
+    Check if the lattice is distributive.
+
+    Parameters
+    ----------
+    lattice : ConceptLattice
+        The concept lattice.
+
+    Returns
+    -------
+    distributive : bool
+        True if the lattice is distributive, False otherwise.
+    '''
+    for (x, y, z) in combinations(lattice.to_networkx().nodes, 3):
+        left = lattice.join([x, lattice.meet([y, z])])
+        right = lattice.meet([lattice.join([x, y]), lattice.join([x, z])])
+        if left != right:
+            return False
+
+        left = lattice.meet([x, lattice.join([y, z])])
+        right = lattice.join([lattice.meet([x, y]), lattice.meet([x, z])])
+        if left != right:
+            return False
+
+    return True
+
+def is_join_distributive(lattice: ConceptLattice) -> bool:
+    '''
+    Check if the lattice is join-distributive.
+
+    Parameters
+    ----------
+    lattice : ConceptLattice
+        The concept lattice.
+    
+    Returns
+    -------
+    join_distributive : bool
+        True if the lattice is join-distributive, False otherwise.
+    '''
+    for x, y, z in combinations(list(lattice.to_networkx().nodes), 3):
+        left = lattice.join([x, lattice.meet([y, z])])
+        right = lattice.meet([lattice.join([x, y]), lattice.join([x, z])])
+        if left != right:
+            return False
+    return True
+
+def is_meet_distributive(lattice: ConceptLattice) -> bool:
+    '''
+    Check if the lattice is meet-distributive.
+
+    Parameters
+    ----------
+    lattice : ConceptLattice
+        The concept lattice.
+
+    Returns
+    -------
+    meet_distributive : bool
+        True if the lattice is meet-distributive, False otherwise.
+    '''
+    for x, y, z in combinations(list(lattice.to_networkx().nodes), 3):
+        left = lattice.meet([x, lattice.join([y, z])])
+        right = lattice.join([lattice.meet([x, y]), lattice.meet([x, z])])
+        if left != right:
+            return False
+    return True
