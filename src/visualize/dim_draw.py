@@ -137,7 +137,7 @@ class DimDraw():
                 for pos in positions:
                     x, y = R @ np.array(pos)
                     plt.scatter(x, y, color="lightgrey", zorder=1)
-                    plt.text(x - 0.2, y - 0.2, node, fontsize=12, color='grey')
+                    plt.text(x, y, node, fontsize=12, color='grey')
 
             # connect grid nodes
             for connection in self.connections:
@@ -149,11 +149,13 @@ class DimDraw():
         for node, coordinate in coordinates.items():
             x, y = R @ np.array(coordinate)
             plt.scatter(x, y, color="orange" if node in highlight_nodes else "blue", zorder=3)
+
+            # annotations
             if args.concepts:
-                plt.text(x, y, ','.join(self.lattice.get_concept_new_extent(node)), fontsize=12, ha='center', va='top', color='grey')
-                plt.text(x, y, ','.join(self.lattice.get_concept_new_intent(node)), fontsize=12, ha='center', va='bottom', color='grey')
+                plt.text(x, y + 0.075 * self.N, ','.join(self.lattice.get_concept_new_extent(node)), fontsize=12, ha='center', va='top', color='grey')
+                plt.text(x, y - 0.075 * self.N, ','.join(self.lattice.get_concept_new_intent(node)), fontsize=12, ha='center', va='bottom', color='grey')
             elif args.indices:
-                plt.text(x, y, node, fontsize=12, ha='center', va='bottom', color='grey')
+                plt.text(x, y - 0.075 * self.N, node, fontsize=12, ha='center', va='bottom', color='grey')
 
         # connect concepts based on relations
         for relation in relations:
