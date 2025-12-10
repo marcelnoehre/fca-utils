@@ -1,8 +1,21 @@
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+
+from dataclasses import dataclass
 from collections import defaultdict
 from fcapy.lattice import ConceptLattice
+from typing import List, Dict, Optional, Tuple
 
 from src.fca_utils.parser import *
 from src.fca_utils.lattice import *
+
+@dataclass
+class Args:
+    log: bool = False
+    grid: bool = False
+    concepts: bool = False
+    indices: bool = False
 
 class DimDraw():
     '''
@@ -97,3 +110,80 @@ class DimDraw():
             node: tuple(list(reversed(le)).index(node) for le in self.realizer)
             for node in self.nodes
         }
+
+    def _plot_lattice(self,
+            filename: str,
+            coordinates: Dict[int, Tuple[int, int]],
+            relations: List[Tuple[Tuple[int, int], Tuple[int, int]]],
+            highlight_nodes: List[int] = [],
+            args: Optional[Dict[str, bool]] = None
+        ):
+        plt.figure(figsize=(8, 6))
+        args: Args = Args(**(args or {}))
+
+        if args.log:
+            for node in self.nodes:
+                print(f'\x1b[35mNode {node}:\x1b[0m')
+                print(f'New extent: \x1b[33m{','.join(self.lattice.get_concept_new_extent(node))}\x1b[0m')
+                print(f'New intent: \x1b[33m{','.join(self.lattice.get_concept_new_intent(node))}\x1b[0m')
+
+        theta = np.pi / 4
+        R = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta),  np.cos(theta)]])
+        
+        # Grid
+        if args.grid:
+            # grid nodes
+            for node, positions in self.grid.items():
+                for pos in positions:
+                    x, y = R @ np.array(pos)
+                    plt.scatter(x, y, color="lightgrey", zorder=1)
+                    plt.text(x - 0.2, y - 0.2, node, fontsize=12, color='grey')
+
+            # connect grid nodes
+            for connection in self.connections:
+                x0, y0 = R @ np.array(connection[0])
+                x1, y1 = R @ np.array(connection[1])
+                plt.plot([x0, x1], [y0, y1], color="lightgrey", zorder=1)
+
+        # concepts
+        for node, coordinate in coordinates.items():
+            x, y = R @ np.array(coordinate)
+            plt.scatter(x, y, color="orange" if node in highlight_nodes else "blue", zorder=3)
+            if args.concepts:
+                plt.text(x, y, ','.join(self.lattice.get_concept_new_extent(node)), fontsize=12, ha='center', va='top', color='grey')
+                plt.text(x, y, ','.join(self.lattice.get_concept_new_intent(node)), fontsize=12, ha='center', va='bottom', color='grey')
+            elif args.indices:
+                plt.text(x, y, node, fontsize=12, ha='center', va='bottom', color='grey')
+
+        # connect concepts based on relations
+        for relation in relations:
+            x0, y0 = R @ np.array(relation[0])
+            x1, y1 = R @ np.array(relation[1])
+            plt.plot([x0, x1], [y0, y1], color="black", zorder=2)
+
+        os.makedirs('output', exist_ok=True)
+        plt.axis("equal")
+        plt.axis("off")
+        plt.tight_layout()
+        plt.savefig(f'output/{filename}')
+        plt.show()
+
+    def plot(self, highlight_nodes: List[int] = [], args: Optional[Dict[str, bool]] = None):
+        '''
+        Draw the concept lattice using DimDraw.
+
+        Parameters
+        ----------
+        highlight_nodes : List[int]
+            A list of nodes to highlight in the drawing.
+
+        args : Optional[Dict[str, bool]]
+            A dictionary of arguments to customize the drawing.
+        '''
+        self._plot_lattice(
+            'dim_draw.png',
+            self.coordinates,
+            [(self.coordinates[a], self.coordinates[b]) for a, b in cover_relations(self.lattice)],
+            highlight_nodes,
+            args
+        )
