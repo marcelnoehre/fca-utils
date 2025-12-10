@@ -65,6 +65,8 @@ class DimDraw():
         self._compute_coordinates()
         if self.dimension == 2:
             self._setup_grid_2d()
+        elif self.dimension == 3:
+            pass
         else:
             raise ValueError(f'Dimension {self.dimension} is not implemented so far!')
 
@@ -170,7 +172,10 @@ class DimDraw():
         plt.savefig(f'output/{filename}')
         plt.show()
 
-    def plot(self, highlight_nodes: List[int] = [], args: Optional[Dict[str, bool]] = None):
+    def plot(self,
+            highlight_nodes: List[int] = [],
+            args: Optional[Dict[str, bool]] = None
+        ):
         '''
         Draw the concept lattice using DimDraw.
 
@@ -182,6 +187,9 @@ class DimDraw():
         args : Optional[Dict[str, bool]]
             A dictionary of arguments to customize the drawing.
         '''
+        if self.dimension != 2:
+            raise ValueError('2D plotting is only available for 2-dimensional realizers!')
+        
         self._plot_lattice(
             'dim_draw.png',
             self.coordinates,
@@ -189,3 +197,50 @@ class DimDraw():
             highlight_nodes,
             args
         )
+
+    def plot_rotating_3d(self,
+            args: Optional[Dict[str, bool]] = None
+        ):
+        '''
+        Plot a rotating 3D visualization of the concept lattice.
+
+        Parameters
+        ----------
+        args : Optional[Dict[str, bool]]
+            A dictionary of arguments to customize the drawing.
+        '''
+        if self.dimension != 3:
+            raise ValueError('3D plotting is only available for 3-dimensional realizers!')
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        args: Args = Args(**(args or {}))
+
+        # concepts
+        X = np.array([coord[0] for coord in self.coordinates.values()])
+        Y = np.array([coord[1] for coord in self.coordinates.values()])
+        Z = np.array([coord[2] for coord in self.coordinates.values()])
+        ax.scatter(X, Y, Z, color='blue')
+
+        # annotations
+        for node, (x, y, z) in self.coordinates.items():
+            if args.concepts:
+                ax.text(x, y, z + 0.075 * self.N, ','.join(self.lattice.get_concept_new_extent(node)), color='grey', fontsize=2 * self.N, zorder=10)
+                ax.text(x, y, z - 0.075 * self.N, ','.join(self.lattice.get_concept_new_intent(node)), color='grey', fontsize=2 * self.N, zorder=10)
+            elif args.indices:
+                ax.text(x, y, z - 0.075 * self.N, node, color='grey', fontsize=2 * self.N, zorder=10)
+
+        # connect concepts based on relations
+        relations = [(self.coordinates[a], self.coordinates[b]) for a, b in cover_relations(self.lattice)]
+        for (x0, y0, z0), (x1, y1, z1) in relations:
+            ax.plot([x0, x1], [y0, y1], [z0, z1], color='gray', alpha=0.5)
+
+        # rotate view
+        for azim in range(0, 360*4 + 1):
+            if not plt.fignum_exists(fig.number):
+                break
+            ax.view_init(elev=30, azim=azim)
+            plt.draw()
+            plt.pause(0.01)
+
+        plt.show()

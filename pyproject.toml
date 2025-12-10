@@ -11,9 +11,16 @@ dependencies = [
     "numpy",
     "networkx",
     "fcapy",
-    "sympy"
+    "sympy",
+    "Pillow",
+    "pyparsing",
+    "python-dateutil",
+    "non-isomorphic-lattices"
 ]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.uv.sources]
+non-isomorphic-lattices = { git = "https://codeberg.org/thille/non-isomorphic-lattices.git", rev = "0.1.1" }

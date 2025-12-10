@@ -2,3 +2,6 @@ numpy
 networkx
 fcapy
 sympy
+Pillow
+pyparsing
+python-dateutil

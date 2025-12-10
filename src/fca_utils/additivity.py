@@ -1,6 +1,8 @@
+import copy
+
 from collections import deque
 from fcapy.lattice import ConceptLattice
-from typing import Iterable, Dict, Tuple, Set
+from typing import Iterable, Dict, Tuple, Set, List
 from sympy import symbols, Eq, solve, sympify
 
 from src.fca_utils.context import *
