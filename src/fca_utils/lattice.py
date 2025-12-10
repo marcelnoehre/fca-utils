@@ -3,7 +3,39 @@ import networkx as nx
 from collections import deque
 from itertools import combinations
 from fcapy.lattice import ConceptLattice
-from typing import Iterable, Set
+from typing import Tuple, Iterable, Set
+
+def cover_relations(concept_lattice: ConceptLattice) -> Set[Tuple[int, int]]:
+    '''
+    Get the cover relations of a concept lattice.
+
+    Parameters
+    ----------
+    concept_lattice : ConceptLattice
+        The concept lattice.
+
+    Returns
+    -------
+    cover_relations : Set[Tuple[int, int]]
+        A set of tuples representing the cover relations of the lattice.
+    '''
+    return set(nx.transitive_reduction(concept_lattice.to_networkx()).edges)
+
+def transitive_closure(concept_lattice: ConceptLattice) -> Set[Tuple[int, int]]:
+    '''
+    Get the transitive closure of a concept lattice.
+    
+    Parameters
+    ----------
+    concept_lattice : ConceptLattice
+        The concept lattice.
+
+    Returns
+    -------
+    transitive_closure : Set[Tuple[int, int]]
+        A set of tuples representing the transitive closure of the lattice.
+    '''
+    return set(nx.transitive_closure(concept_lattice.to_networkx()).edges)
 
 def incomparability_graph(lattice: ConceptLattice) -> nx.Graph:
     '''
