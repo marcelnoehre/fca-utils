@@ -16,13 +16,17 @@ class AdditivityCheck():
             coordinates: Dict[int, Tuple[int]]
         ):
         self.lattice = lattice
-        self.realizer = realizer
+        self.dimension = len(realizer)
+        self.realizer = tuple(
+            realizer[i] if realizer[i][0] == 0 else list(reversed(realizer[i])) 
+            for i in range(self.dimension)
+        )
         self.coordinates = coordinates
         self.objects = extent_of_concept(self.lattice, self.realizer[0][0])
         self.features = intent_of_concept(self.lattice, self.realizer[0][-1])
         self.top = 0
         self.bottom = len(lattice.to_networkx().nodes) - 1
-        self.dimensions = [chr(97 + i) for i in range(len(realizer))]
+        self.dimensions = [chr(97 + i) for i in range(self.dimension)]
 
     def check_bottom_up_additivity(self):
         '''
@@ -175,7 +179,7 @@ class AdditivityCheck():
         -------
         additive : bool
         '''
-        equations = []
+        self.combined_equations = []
         visited = set()
         queue = deque([self.bottom])
         base_vectors_combined = {}
@@ -191,7 +195,7 @@ class AdditivityCheck():
 
             # construct equations for the current node
             for i, dim in enumerate(self.dimensions):
-                equations.append((' + '.join(f'{dim}_{v}' for v in vars) if vars else '0') + f' = {self.coordinates[node][i]}')
+                self.combined_equations.append((' + '.join(f'{dim}_{v}' for v in vars) if vars else '0') + f' = {self.coordinates[node][i]}')
 
             # add parents if not already processed or in queue
             visited.add(node)
@@ -204,7 +208,7 @@ class AdditivityCheck():
             coordinates=self.coordinates,
             base_vectors=base_vectors_combined,
             variables=[f'{dim}_{v}' for dim in self.dimensions for _, v in list(self.objects) + list(self.features)],
-            equations=equations,
+            equations=self.combined_equations,
             dimensions=self.dimensions
         )
         
@@ -259,7 +263,6 @@ class LinearEquationSolver:
         self.variables = [f'{var}' for var in variables]
         self.symbols = symbols(' '.join(self.variables))
         self.equations = [Eq(sympify(l), sympify(r)) for l,r in (eq.split(' = ') for eq in equations)]
-
         self.solution = solve(self.equations, self.symbols, dict=True)
 
     def _solve(self, dim: str, node: int, expected: int):
