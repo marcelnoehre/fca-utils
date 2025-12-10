@@ -126,8 +126,8 @@ class DimDraw():
         if args.log:
             for node in self.nodes:
                 print(f'\x1b[35mNode {node}:\x1b[0m')
-                print(f'New extent: \x1b[33m{','.join(self.lattice.get_concept_new_extent(node))}\x1b[0m')
-                print(f'New intent: \x1b[33m{','.join(self.lattice.get_concept_new_intent(node))}\x1b[0m')
+                print(f'New extent: \x1b[33m{",".join(self.lattice.get_concept_new_extent(node))}\x1b[0m')
+                print(f'New intent: \x1b[33m{",".join(self.lattice.get_concept_new_intent(node))}\x1b[0m')
 
         theta = np.pi / 4
         R = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta),  np.cos(theta)]])

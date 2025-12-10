@@ -5,6 +5,7 @@ import subprocess
 from typing import Iterable, Tuple
 from fcapy.lattice import ConceptLattice
 
+from src.linear_extension.sat_solver import sat_dimension, Poset
 from src.fca_utils.parser import decode_cxt
 from src.fca_utils.lattice import *
 
@@ -136,3 +137,39 @@ def minimal_realizers(lattice: ConceptLattice, linear_extensions: Iterable[Tuple
             k += 1
 
     return k, minimal_realizers
+
+def sat_realizer(lattice: ConceptLattice):
+    '''
+    Compute a minimal realizer using a SAT solver.
+
+    Parameters
+    ----------
+    lattice : ConceptLattice
+        The concept lattice.
+
+    Returns
+    -------
+    dimension : int
+        The order dimension of the lattice (size of the minimal realizer).
+    minimal_realizers : Iterable[Tuple[int]]
+        A minimal realizer for the concept lattice.
+
+    Disclaimer
+    ----------
+    The algorithm behind this function has been developed by Maximilian Wittmann
+    Copyright (c) 2024 Maximilian Wittmann, MIT License
+    Repository: https://github.com/maxitw/productdim
+    '''
+    nodes = list(lattice.to_networkx().nodes)
+    # construct sage poset from lattice
+    covers = {
+        node: list(lattice.parents(node)) 
+        for node in nodes
+    }
+    P = Poset(covers)
+    
+    # compute realizer using SAT solver
+    dim, sat_realizer = sat_dimension(P, certificate=True)
+    realizer = [[nodes[i] for i in le] for le in sat_realizer]
+    
+    return dim, realizer
