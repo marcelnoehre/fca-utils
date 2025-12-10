@@ -3,7 +3,7 @@ import networkx as nx
 from collections import deque
 from itertools import combinations
 from fcapy.lattice import ConceptLattice
-from typing import Iterable, Tuple, List, Set
+from typing import Iterable, Set
 
 def incomparability_graph(lattice: ConceptLattice) -> nx.Graph:
     '''
