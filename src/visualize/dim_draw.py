@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from dataclasses import dataclass
 from collections import defaultdict
 from fcapy.lattice import ConceptLattice
+from matplotlib.animation import FFMpegWriter
 from typing import List, Dict, Optional, Tuple
 
 from src.fca_utils.parser import *
@@ -16,6 +17,7 @@ class Args:
     grid: bool = False
     concepts: bool = False
     indices: bool = False
+    export: bool = False
 
 class DimDraw():
     '''
@@ -165,11 +167,12 @@ class DimDraw():
             x1, y1 = R @ np.array(relation[1])
             plt.plot([x0, x1], [y0, y1], color="black", zorder=2)
 
-        os.makedirs('output', exist_ok=True)
         plt.axis("equal")
         plt.axis("off")
         plt.tight_layout()
-        plt.savefig(f'output/{filename}')
+        if args.export:
+            os.makedirs('output', exist_ok=True)
+            plt.savefig(f'output/{filename}')
         plt.show()
 
     def plot(self,
@@ -235,12 +238,23 @@ class DimDraw():
         for (x0, y0, z0), (x1, y1, z1) in relations:
             ax.plot([x0, x1], [y0, y1], [z0, z1], color='gray', alpha=0.5)
 
-        # rotate view
-        for azim in range(0, 360*4 + 1):
-            if not plt.fignum_exists(fig.number):
-                break
-            ax.view_init(elev=30, azim=azim)
-            plt.draw()
-            plt.pause(0.01)
+        if args.export:
+            os.makedirs('output', exist_ok=True)
+            # capture frames for video
+            writer = FFMpegWriter(fps=30)
+            with writer.saving(fig, 'output/rotating_dim_draw.mp4', dpi=200):
+                for azim in range(0, 360 * 4 + 1):
+                    ax.view_init(elev=30, azim=azim)
+                    writer.grab_frame()
 
-        plt.show()
+            plt.close(fig)
+        else:
+            # rotate interactive view
+            for azim in range(0, 360*4 + 1):
+                if not plt.fignum_exists(fig.number):
+                    break
+                ax.view_init(elev=30, azim=azim)
+                plt.draw()
+                plt.pause(0.01)
+
+            plt.show()
