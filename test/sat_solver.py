@@ -9,7 +9,7 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 from src.linear_extension.realizer import *
 from src.visualize.dim_draw import *
-from src.fca_utils.additivity import AdditivityCheck
+from src.additivity.additivity import AdditivityCheck
 
 # compute 2-dimensional 'realizer' for the FM3
 context = decode_cxt('../data/FM3.cxt')

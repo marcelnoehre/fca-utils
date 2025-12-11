@@ -245,7 +245,7 @@ class DimDraw():
             writer = FFMpegWriter(fps=30)
             with writer.saving(fig, 'output/rotating_dim_draw.mp4', dpi=200):
                 for azim in range(0, 360 * 4 + 1):
-                    ax.view_init(elev=30, azim=azim)
+                    ax.view_init(elev=0, azim=azim)
                     writer.grab_frame()
 
             plt.close(fig)
@@ -254,7 +254,7 @@ class DimDraw():
             for azim in range(0, 360*4 + 1):
                 if not plt.fignum_exists(fig.number):
                     break
-                ax.view_init(elev=30, azim=azim)
+                ax.view_init(elev=0, azim=azim)
                 plt.draw()
                 plt.pause(0.01)
 
