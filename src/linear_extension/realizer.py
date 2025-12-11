@@ -5,7 +5,7 @@ import subprocess
 from typing import Iterable, Tuple
 from fcapy.lattice import ConceptLattice
 
-from src.linear_extension.sat_solver import sat_dimension, Poset
+from libraries.productdim import sat_dimension, Poset
 from src.fca_utils.parser import decode_cxt
 from src.fca_utils.lattice import *
 

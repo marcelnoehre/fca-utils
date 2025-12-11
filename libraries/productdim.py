@@ -87,7 +87,6 @@ def sat_dimension(poset, certificate=False):
             new_clause.append(ac_var)
             clauses.append(new_clause)
 
-
     from sage.sat.solvers.satsolver import SAT
     sign = lambda x: 1 if x > 0 else -1
     def build_sat(k):
@@ -98,6 +97,7 @@ def sat_dimension(poset, certificate=False):
             for clause in clauses:
                 new_clause = [var + sign(var)*modifier for var in clause]
                 sat.add_clause(new_clause)
+        
         #clauses to ensure that each incomparable pair appears in both orders
         for var in range(1, n_inc+1):
             sat.add_clause([var + i*n_inc for i in range(k)])
