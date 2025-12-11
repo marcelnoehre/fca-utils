@@ -224,6 +224,7 @@ class DimDraw():
         Y = np.array([coord[1] for coord in self.coordinates.values()])
         Z = np.array([coord[2] for coord in self.coordinates.values()])
         ax.scatter(X, Y, Z, color='blue')
+        ax.set_axis_off()
 
         # annotations
         for node, (x, y, z) in self.coordinates.items():
