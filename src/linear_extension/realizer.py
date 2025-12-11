@@ -2,11 +2,12 @@ import re
 import copy
 import subprocess
 
+from sage.all import Poset
 from typing import Iterable, Tuple
 from fcapy.lattice import ConceptLattice
 
 from libraries.productdim import sat_dimension, Poset
-from src.fca_utils.parser import decode_cxt
+from src.fca_utils.parser import decode_cxt, sage_poset_from_lattice
 from src.fca_utils.lattice import *
 
 def dim_draw_realizer(
@@ -160,16 +161,10 @@ def sat_realizer(lattice: ConceptLattice):
     Copyright (c) 2024 Maximilian Wittmann, MIT License
     Repository: https://github.com/maxitw/productdim
     '''
-    nodes = list(lattice.to_networkx().nodes)
-    # construct sage poset from lattice
-    covers = {
-        node: list(lattice.parents(node)) 
-        for node in nodes
-    }
-    P = Poset(covers)
     
+    P = sage_poset_from_lattice(lattice)
     # compute realizer using SAT solver
     dim, sat_realizer = sat_dimension(P, certificate=True)
-    realizer = [[nodes[i] for i in le] for le in sat_realizer]
+    realizer = [[list(lattice.to_networkx().nodes)[i] for i in le] for le in sat_realizer]
     
     return dim, realizer
