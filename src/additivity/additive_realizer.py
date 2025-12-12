@@ -1,3 +1,5 @@
+import itertools
+
 from fcapy.lattice import ConceptLattice
 
 from src.fca_utils.lattice import *
@@ -29,12 +31,35 @@ class AdditiveRealizer:
     def realizer(self):
         dim = 2
         self._define_sat_variables(dim)
+        self._construct_linear_equations()
 
     def _define_sat_variables(self, dim: int):
         self.dimensions = [chr(97 + i) for i in range(dim)]
         self.sat_variables = {
             f'{d}_{bv}': i+1
-            for i, (d, bv) in enumerate(
-                (d, bv) for d in self.dimensions for bv in self.base_vectors
-            )
+            for i, (d, bv) in enumerate(itertools.product(self.dimensions, self.base_vectors))
         }
+
+    def _construct_linear_equations(self):
+        self.equations = []
+        visited = set()
+        queue = deque([node for node in self.lattice.parents(len(self.concepts)-1)])
+
+        while queue:
+            node = queue.popleft()
+
+            # objects and missing features for the current node
+            extent = [v for _, v in extent_of_concept(self.lattice, node)]
+            complement_intent = [f for f in self.features if f not in intent_of_concept(self.lattice, node)]
+            vars = extent + complement_intent
+
+            # construct equations for the current node
+            for d in self.dimensions:
+                self.sat_variables[f'{d}_{node}'] = len(self.sat_variables)
+                self.equations.append((tuple(f'{d}_{v}' for v in vars) if vars else tuple('0'), f'{d}_{node}'))
+
+            # add parents if not already processed or in queue
+            visited.add(node)
+            for p in self.lattice.parents(node):
+                if p not in queue and p not in visited:
+                    queue.append(p)
