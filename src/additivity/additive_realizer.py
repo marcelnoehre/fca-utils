@@ -1,5 +1,7 @@
 import itertools
 
+from sage.sat.solvers.satsolver import SAT
+
 from fcapy.lattice import ConceptLattice
 
 from src.fca_utils.lattice import *
@@ -32,6 +34,7 @@ class AdditiveRealizer:
         dim = 2
         self._define_sat_variables(dim)
         self._construct_linear_equations()
+        self._construct_additivity_clauses()
 
     def _define_sat_variables(self, dim: int):
         self.dimensions = [chr(97 + i) for i in range(dim)]
@@ -63,3 +66,10 @@ class AdditiveRealizer:
             for p in self.lattice.parents(node):
                 if p not in queue and p not in visited:
                     queue.append(p)
+
+    def _construct_additivity_clauses(self):
+        # A -> B = ¬A v B
+        self.additivity_clauses = [
+            ([-self.sat_variables[v] for v in eq] + [self.sat_variables[y]])
+            for eq, y in self.equations
+        ]
