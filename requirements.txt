@@ -5,3 +5,4 @@ sympy
 Pillow
 pyparsing
 python-dateutil
+pysat
