@@ -85,9 +85,11 @@ class AdditiveRealizer:
         for d, bv in itertools.product(self.dimensions, self.base_vectors):
             self.sat_variables[f'{d}_{bv}'] = len(self.sat_variables)+1
         # A -> B = ¬A v B
-        for k,v in self.solution[0].items():
-            print(f'{k} = {v}')
-        self.additivity_clauses = [
-            ([-self.sat_variables[v] for v in eq] + [self.sat_variables[y]])
-            for eq, y in self.equations
-        ]
+        self.additivity_clauses = []
+        for target, vectors in self.solution[0].items():
+            vectors = str(vectors).split(' + ')
+            if not vectors == ['0']:
+                self.additivity_clauses.append(
+                    [-self.sat_variables[v] for v in vectors]
+                    + [self.sat_variables[str(target)]]
+                )
