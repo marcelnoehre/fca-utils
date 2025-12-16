@@ -1,9 +1,7 @@
 import math
 
-from sage.all import Poset
 from typing import Iterable, Tuple
 from fcapy.context import FormalContext
-from fcapy.lattice import ConceptLattice
 
 from src.fca_utils.context import from_covers
 
@@ -70,22 +68,3 @@ def decode_cxt(cxt: str) -> FormalContext:
 
     return FormalContext(data=cxt, object_names=obj_names, attribute_names=attr_names)
 
-def sage_poset_from_lattice(lattice: ConceptLattice) -> Poset:
-    '''
-    Convert a FcaPy ConceptLattice into a SageMath Poset.
-
-    Parameters
-    ----------
-    lattice : ConceptLattice
-        The concept lattice to convert.
-
-    Returns
-    -------
-    poset : Poset
-        The corresponding SageMath Poset.
-    '''
-    nodes = list(lattice.to_networkx().nodes)
-    return Poset({
-        node: list(lattice.parents(node)) 
-        for node in nodes
-    })

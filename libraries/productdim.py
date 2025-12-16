@@ -2,6 +2,9 @@
 # Repository: https://github.com/maxitw/productdim
 
 from sage.all import Poset
+from sage.sat.solvers.satsolver import SAT
+
+from fcapy.lattice import ConceptLattice
 
 def strict_upset(P,x):
     """Calculates the upset of x in the partial order P (without x)"""
@@ -87,7 +90,6 @@ def sat_dimension(poset, certificate=False):
             new_clause.append(ac_var)
             clauses.append(new_clause)
 
-    from sage.sat.solvers.satsolver import SAT
     sign = lambda x: 1 if x > 0 else -1
     def build_sat(k):
         sat = SAT(solver="kissat")
@@ -134,3 +136,27 @@ def sat_dimension(poset, certificate=False):
 
     return (k, [[poset._list[i] for i in l] for l in realizer])
 
+##############################################################
+# To connect this implementation with the fca-utils library
+# this parser is required to transform the concept lattice
+# object from FCApy into a Sage poset.
+##############################################################
+def sage_poset_from_lattice(lattice: ConceptLattice) -> Poset:
+    '''
+    Convert a FcaPy ConceptLattice into a SageMath Poset.
+
+    Parameters
+    ----------
+    lattice : ConceptLattice
+        The concept lattice to convert.
+
+    Returns
+    -------
+    poset : Poset
+        The corresponding SageMath Poset.
+    '''
+    nodes = list(lattice.to_networkx().nodes)
+    return Poset({
+        node: list(lattice.parents(node)) 
+        for node in nodes
+    })

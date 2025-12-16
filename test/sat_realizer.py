@@ -7,7 +7,7 @@ warnings.filterwarnings('ignore')
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname('src'), '..')))
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
-from src.linear_extension.sat_realizer import *
+from src.linear_extension.realizer import sat_realizer
 from src.visualize.dim_draw import *
 from src.additivity.additivity import AdditivityCheck
 
@@ -15,16 +15,19 @@ context = decode_cxt('../data/FM3.cxt')
 lattice = ConceptLattice.from_context(context)
 
 # compute 3-dimensional realizer for the FM3
-dim, realizer = SatRealizer(lattice).realizer()
+dim, realizer = sat_realizer(lattice)
 
+# plot realizer with DimDraw
 dim_draw = DimDraw(lattice, realizer)
 dim_draw.plot_rotating_3d()
 
+# check if DimDraw drawing is additive
 check = AdditivityCheck(lattice, realizer, dim_draw.coordinates)
 print(f'\x1b[33mBottom-Up Addiive:\x1b[0m {check.check_bottom_up_additivity()}')
 print(f'\x1b[33mTop-Down Additive:\x1b[0m {check.check_top_down_additivity()}')
 print(f'\x1b[33mCombined Additive:\x1b[0m {check.check_combined_additivity()}')
 
+# log linear equations of set representation X := G U M
 print('\n\x1b[33mLinear Equations (Combined Additivity):\x1b[0m')
 for eq in check.combined_equations:
     print(eq)

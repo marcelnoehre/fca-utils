@@ -1,11 +1,11 @@
-from sage.all import Poset
-from sage.sat.solvers.satsolver import SAT
+import copy
 
-from typing import List, Dict, Tuple
+from pysat.formula import CNF
+from pysat.solvers import Solver
+from typing import List, Tuple
 from fcapy.lattice import ConceptLattice
 
-from src.fca_utils.parser import sage_poset_from_lattice
-
+from src.fca_utils.lattice import *
 
 class SatRealizer:
     '''
@@ -18,12 +18,12 @@ class SatRealizer:
     '''
 
     def __init__(self, lattice: ConceptLattice):
-        # store lattice and poset
+        # store lattice and concepts
         self.lattice = lattice
-        self.P = sage_poset_from_lattice(lattice)
-        self.concepts = self.P.list()
+        self.G = self.lattice.to_networkx()
+        self.concepts = self.G.nodes
         # store incomparable pairs
-        self.incomparable_pairs = self.P.incomparability_graph().edges(sort=True, labels=False)
+        self.incomparable_pairs = incomparability_graph(self.lattice).edges
         self.N_incomparable = len(self.incomparable_pairs)
         # assign SAT variables to incomparable pairs
         # positive for (a,b), negative for (b,a)
@@ -32,15 +32,15 @@ class SatRealizer:
             self.sat_variables[(a, b)] = i
             self.sat_variables[(b, a)] = -i
 
-    def realizer(self) -> Tuple[int, List[Poset]]:
+    def realizer(self) -> Tuple[int, List[List[int]]]:
         '''
         Compute the realizer using the kissat SAT solver.
 
         Returns:
         --------
             dimension : int
-                Order dimension of the poset.
-            realizer : List[Poset]
+                Order dimension of the concept lattice.
+            realizer : List[List[int]]
                 List of linear extensions forming the realizer.
         '''
         # setup clauses for SAT solver
@@ -48,12 +48,13 @@ class SatRealizer:
 
         dim = 1
         while True:
-            result = self._build_sat(dim)()
-            if result is not False:
+            solver = self._build_sat(dim)
+            model = solver.get_model() if solver.solve() else None
+            if model:
                 break
             dim += 1
         
-        return dim, self._realizer_from_sat_result(result, dim)
+        return dim, self._realizer_from_sat_result(model, dim)
 
     def _setup_incomparability_clauses(self):
         '''
@@ -72,9 +73,10 @@ class SatRealizer:
                 bc_var = self.sat_variables.get((b, c))
 
                 # skip if (a,b) or (b,c) is not relevant for transitivity
-                if ab_var is None and not self.P.is_less_than(a, b):
+                
+                if ab_var is None and not b in nx.descendants(self.G, a):
                     continue
-                if bc_var is None and not self.P.is_less_than(b, c):
+                if bc_var is None and not c in nx.descendants(self.G, b):
                     continue
 
                 # Build clause: (~(a<b) OR ~(b<c) OR (a<c))
@@ -87,21 +89,21 @@ class SatRealizer:
 
                 self.incomparability_clauses.append(clause)
 
-    def _build_sat(self, dim: int) -> SAT:
+    def _build_sat(self, dim: int) -> Solver:
         '''
         Build the SAT solver instance for given dimension.
 
         Parameters
         ----------
         dim : int
-            Dimension of the poset (number of linear extensions).
+            Dimension of the concept lattice (number of linear extensions).
         
         Returns
         -------
-        sat : SAT
+        solver : Solver
             SAT solver instance with added clauses.
         '''
-        sat = SAT(solver="kissat")
+        cnf = CNF()
         
         # Incomparability clauses for transitivity
         sign = lambda x: 1 if x > 0 else -1
@@ -109,17 +111,17 @@ class SatRealizer:
         # Ensure independent variables for each linear extension
         for offset in [i * self.N_incomparable for i in range(dim)]:
             for clause in self.incomparability_clauses:
-                sat.add_clause([var + sign(var) * offset for var in clause])
+                cnf.append([var + sign(var) * offset for var in clause])
 
         for var in range(1, self.N_incomparable + 1):
             # positive clause: at least one extension has a < b
-            sat.add_clause([var + i * self.N_incomparable for i in range(dim)])
+            cnf.append([var + i * self.N_incomparable for i in range(dim)])
             # negative clause: at least one extension has b < a
-            sat.add_clause([-var - i * self.N_incomparable for i in range(dim)])
+            cnf.append([-var - i * self.N_incomparable for i in range(dim)])
 
-        return sat
-    
-    def _realizer_from_sat_result(self, result: Dict[int, bool], dim: int) -> List[Poset]:
+        return Solver(name="cadical195", bootstrap_with=cnf)
+
+    def _realizer_from_sat_result(self, model, dim: int) -> List[List[int]]:
         '''
         Construct the realizer from the SAT solver result.
 
@@ -128,29 +130,29 @@ class SatRealizer:
         result : Dict[int, bool]
             Mapping from SAT variable to boolean value indicating the order.
         dim : int
-            Dimension of the poset (number of linear extensions).
+            Dimension of the concept lattice (number of linear extensions).
 
         Returns
         -------
-        realizer : List[Poset]
+        realizer : List[List[int]]
             List of linear extensions forming the realizer.
         '''
         realizer = []
 
         for i in range(dim):
-            linear_extension = self.P.hasse_diagram().copy()
+            linear_extension = copy.deepcopy(self.G)
 
             # offset for i-th linear extension
             offset = i * self.N_incomparable
 
             # reach total order by adding edges between incomparable pairs according to SAT result
             for var_i, (a, b) in enumerate(self.incomparable_pairs, start=1):
-                if result[var_i + offset]:
+                if (var_i + offset) in model:
                     linear_extension.add_edge(a, b)
                 else:
                     linear_extension.add_edge(b, a)
 
             # topological sort gives the linear extension
-            realizer.append(linear_extension.topological_sort())
+            realizer.append(list(nx.topological_sort(linear_extension)))
 
         return realizer
