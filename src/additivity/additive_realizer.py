@@ -34,6 +34,32 @@ class AdditiveRealizer:
         self._setup_smt_variables()
         self._setup_relations()
 
+    def realizer(self):
+        '''
+        Compute an additive realizer using the z3 SMT solver.
+
+        Raises
+        ------
+        error : ValueError
+             If no additive realizer is found for the concept lattice.
+        '''
+        if self.solver.check() == sat:
+            # solved clauses
+            self.model = self.solver.model()
+            # prepare empty realizer
+            realizer = {
+                d: [None for _ in self.concepts]
+                for d in self.dimensions
+            }
+            # insert concepts based on their vector sum
+            for d in self.dimensions:
+                for concept in self.concepts:
+                    realizer[d][self.model[Int(f'{d}_{concept}')].as_long()] = concept
+
+            return self.dimension, [le for le in realizer.values()]
+        else:
+            raise ValueError('No additive realizer found!')
+
     def _compute_dimension(self):
         '''
         Compute the order dimension of the concept lattice using the regular
@@ -87,29 +113,3 @@ class AdditiveRealizer:
         for d in self.dimensions:
             self.solver.add(Int(f'{d}_{len(self.concepts)-1}') == 0)
             self.solver.add(Int(f'{d}_0') == self.top)
-
-    def realizer(self):
-        '''
-        Compute an additive realizer using the z3 SMT solver.
-
-        Raises
-        ------
-        error : ValueError
-             If no additive realizer is found for the concept lattice.
-        '''
-        if self.solver.check() == sat:
-            # solved clauses
-            self.model = self.solver.model()
-            # prepare empty realizer
-            realizer = {
-                d: [None for _ in self.concepts]
-                for d in self.dimensions
-            }
-            # insert concepts based on their vector sum
-            for d in self.dimensions:
-                for concept in self.concepts:
-                    realizer[d][self.model[Int(f'{d}_{concept}')].as_long()] = concept
-
-            return self.dimension, [le for le in realizer.values()]
-        else:
-            raise ValueError('No additive realizer found!')

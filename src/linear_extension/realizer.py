@@ -7,6 +7,7 @@ from fcapy.lattice import ConceptLattice
 
 from src.fca_utils.parser import decode_cxt
 from src.linear_extension.sat_realizer import SatRealizer
+from src.additivity.additive_realizer import AdditiveRealizer
 from src.fca_utils.lattice import *
 
 def dim_draw_realizer(
@@ -151,7 +152,7 @@ def sat_realizer(lattice: ConceptLattice):
     -------
     dimension : int
         The order dimension of the lattice (size of the minimal realizer).
-    minimal_realizers : Iterable[Tuple[int]]
+    realizer : Iterable[Tuple[int]]
         A minimal realizer for the concept lattice.
     '''
     sat_realizer = SatRealizer(lattice)
@@ -159,3 +160,26 @@ def sat_realizer(lattice: ConceptLattice):
     realizer = [[list(lattice.to_networkx().nodes)[i] for i in le] for le in sat_realizer]
     
     return dim, realizer
+
+def additive_realizer(lattice: ConceptLattice):
+    '''
+    Compute an additive realizer using a SMT solver.
+
+    Parameters
+    ----------
+    lattice : ConceptLattice
+        The concept lattice.
+    
+    Returns
+    -------
+    dimension : int
+        The order dimension of the lattice (size of the minimal realizer).
+    realizer : Iterable[Tuple[int]]
+        A minimal additive realizer for the concept lattice.
+
+    Raises
+    ------
+    error : ValueError
+        If no additive realizer is found for the concept lattice.
+    '''
+    return AdditiveRealizer(lattice).realizer()
