@@ -34,7 +34,7 @@ class SatRealizer:
 
     def realizer(self) -> Tuple[int, List[List[int]]]:
         '''
-        Compute the realizer using the kissat SAT solver.
+        Compute the realizer using the cadical195 SAT solver.
 
         Returns:
         --------
