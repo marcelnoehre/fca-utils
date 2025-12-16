@@ -6,3 +6,5 @@ Pillow
 pyparsing
 python-dateutil
 python-sat
+z3-solver
+pyqt5

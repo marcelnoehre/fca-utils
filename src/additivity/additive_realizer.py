@@ -57,25 +57,31 @@ class AdditiveRealizer:
                 self.solver.add(Int(f'{d}_{a}') > Int(f'{d}_{b}'))
 
         for a, b in self.incomparable_pairs:
-            # TODO: adjust for dimensions >= 2
-            # (xa < xb and ya > yb) or (xa > xb and yb < ya)
-            xa = Int(f'{self.dimensions[0]}_{a}')
-            ya = Int(f'{self.dimensions[1]}_{a}')
-            xb = Int(f'{self.dimensions[0]}_{b}')
-            yb = Int(f'{self.dimensions[1]}_{b}')
+            a_vars = [Int(f'{d}_{a}') for d in self.dimensions]
+            b_vars = [Int(f'{d}_{b}') for d in self.dimensions]
+            # at least one dimension where a < b
+            a_lt_b = [a_vars[i] < b_vars[i] for i in range(self.dimension)]
+            # at least one dimension where a > b
+            a_gt_b = [a_vars[i] > b_vars[i] for i in range(self.dimension)]
+            self.solver.add(And(Or(*a_lt_b), Or(*a_gt_b)))
+            # a != b in the same dimension
+            for d in self.dimensions:
+                self.solver.add(Int(f'{d}_{a}') != Int(f'{d}_{b}'))
 
-            self.solver.add(Or(And(xa < xb, ya > yb), And(xa > xb, ya < yb)))
-        
         for d in self.dimensions:
             self.solver.add(Int(f'{d}_0') == self.top)
 
     def realizer(self):
         if self.solver.check() == sat:
             self.model = self.solver.model()
-            realizer = [
-                [self.model[Int(f'{d}_{concept}')] for concept in self.concepts]
+            realizer = {
+                d: [None for _ in self.concepts]
                 for d in self.dimensions
-            ]
-            return self.dimension, realizer
+            }
+            for d in self.dimensions:
+                for concept in self.concepts:
+                    realizer[d][self.model[Int(f'{d}_{concept}')].as_long()] = concept
+
+            return self.dimension, [r for r in realizer.values()]
         else:
             raise ValueError('No additive realizer found!')

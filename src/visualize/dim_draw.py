@@ -1,5 +1,7 @@
 import os
 import numpy as np
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
 from dataclasses import dataclass
@@ -42,7 +44,7 @@ class DimDraw():
 
     def __init__(self,
             lattice: ConceptLattice,
-            realizer: Tuple[Iterable[int], Iterable[int]]
+            realizer: Iterable[Iterable[int]]
         ):
         '''
         Initialize DimDraw with a given 'realizer'.
@@ -51,7 +53,7 @@ class DimDraw():
         ----------
         lattice : ConceptLattice
             The concept lattice.
-        realizer : Tuple[Iterable[int], Iterable[int]]
+        realizer : Iterable[Iterable[int]]
             A 'realizer' defining the DimDraw axes
         '''
         self.lattice = lattice
