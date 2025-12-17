@@ -10,7 +10,7 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 from src.linear_extension.realizer import *
 from src.visualize.dim_draw import *
 
-context = decode_cxt('../data/cube.cxt')
+context = decode_cxt('../data/standard_lattices/B3.cxt')
 lattice = ConceptLattice.from_context(context)
 
 # compute 3-dimensional realizer for the FM3

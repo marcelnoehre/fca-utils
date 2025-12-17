@@ -11,9 +11,9 @@ from src.linear_extension.realizer import *
 from src.visualize.dim_draw import *
 
 # compute 2-dimensional 'realizer' for the FM3
-context = decode_cxt('../data/FM3.cxt')
+context = decode_cxt('../data/standard_lattices/FM3.cxt')
 lattice = ConceptLattice.from_context(context)
-realizer = dim_draw_realizer('../data/FM3.cxt', '../libraries/brunt-fork.jar')
+realizer = dim_draw_realizer('../data/standard_lattices/FM3.cxt', '../libraries/brunt-fork.jar')
 
 # plot DimDraw layout
 dim_draw = DimDraw(lattice, realizer)

@@ -12,7 +12,7 @@ from src.linear_extension.realizer import *
 from src.visualize.dim_draw import *
 
 # compute 3-dimensional realizer for the cube lattice
-context = decode_cxt('../data/cube.cxt')
+context = decode_cxt('../data/standard_lattices/B3.cxt')
 lattice = ConceptLattice.from_context(context)
 linear_extensions = linear_extensions_topological(lattice)
 dim, realizers = minimal_realizers(lattice, linear_extensions, False)

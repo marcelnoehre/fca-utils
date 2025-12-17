@@ -11,7 +11,7 @@ from src.linear_extension.realizer import sat_realizer
 from src.visualize.dim_draw import *
 from src.additivity.additivity import AdditivityCheck
 
-context = decode_cxt('../data/FM3.cxt')
+context = decode_cxt('../data/standard_lattices/FM3.cxt')
 lattice = ConceptLattice.from_context(context)
 
 # compute 3-dimensional realizer for the FM3
