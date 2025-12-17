@@ -75,7 +75,7 @@ class AdditiveRealizer:
         '''
         # base vectors
         self.smt_variables = {
-            (d, v): Int(f'{d}_{v}')
+            (d, v): Real(f'{d}_{v}')
             for d in self.dimensions
             for v in self.features.union(self.objects)
         }
