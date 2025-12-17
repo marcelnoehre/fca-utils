@@ -17,8 +17,9 @@ from src.fca_utils.lattice import *
 class Args:
     log: bool = False
     grid: bool = False
-    concepts: bool = False
     indices: bool = False
+    concepts: bool = False
+    base_vectors: bool = False
     export: bool = False
     transform: bool = False
 
@@ -158,11 +159,17 @@ class DimDraw():
             plt.scatter(x, y, color="orange" if node in highlight_nodes else "blue", zorder=3)
 
             # annotations
+            if args.indices:
+                plt.text(x, y - 0.075 * self.N, node, fontsize=12, ha='center', va='bottom', color='grey')
             if args.concepts:
                 plt.text(x, y + 0.075 * self.N, ','.join(self.lattice.get_concept_new_extent(node)), fontsize=12, ha='center', va='top', color='grey')
                 plt.text(x, y - 0.075 * self.N, ','.join(self.lattice.get_concept_new_intent(node)), fontsize=12, ha='center', va='bottom', color='grey')
-            elif args.indices:
-                plt.text(x, y - 0.075 * self.N, node, fontsize=12, ha='center', va='bottom', color='grey')
+            if args.base_vectors:
+                extent = {v for _, v in extent_of_concept(self.lattice, node)}
+                intent = {v for _, v in intent_of_concept(self.lattice, node)}
+                complement_intent = {f for f in {v for _, v in self.features} if f not in intent}
+                plt.text(x, y + 0.075 * self.N, ','.join(extent), fontsize=12, ha='center', va='top', color='grey')
+                plt.text(x, y - 0.075 * self.N, ','.join(complement_intent), fontsize=12, ha='center', va='bottom', color='grey')
 
         # connect concepts based on relations
         for relation in relations:
@@ -250,11 +257,17 @@ class DimDraw():
         # annotations
         for node in self.nodes:
             x, y, z = V[:, node]
+            if args.indices:
+                ax.text(x, y, z - 0.075 * self.N, node, color='grey', fontsize=2 * self.N, zorder=10)
             if args.concepts:
                 ax.text(x, y, z + 0.075 * self.N, ','.join(self.lattice.get_concept_new_extent(node)), color='grey', fontsize=2 * self.N, zorder=10)
                 ax.text(x, y, z - 0.075 * self.N, ','.join(self.lattice.get_concept_new_intent(node)), color='grey', fontsize=2 * self.N, zorder=10)
-            elif args.indices:
-                ax.text(x, y, z - 0.075 * self.N, node, color='grey', fontsize=2 * self.N, zorder=10)
+            if args.base_vectors:
+                extent = {v for _, v in extent_of_concept(self.lattice, node)}
+                intent = {v for _, v in intent_of_concept(self.lattice, node)}
+                complement_intent = {f for f in {v for _, v in self.features} if f not in intent}
+                ax.text(x, y, z + 0.075 * self.N, ','.join(extent), color='grey', fontsize=2 * self.N, zorder=10)
+                ax.text(x, y, z - 0.075 * self.N, ','.join(complement_intent), color='grey', fontsize=2 * self.N, zorder=10)
 
         # connect concepts based on relations
         for i, j in cover_relations(self.lattice):
