@@ -20,6 +20,7 @@ class Args:
     concepts: bool = False
     indices: bool = False
     export: bool = False
+    transform: bool = False
 
 class DimDraw():
     '''
@@ -222,14 +223,33 @@ class DimDraw():
         args: Args = Args(**(args or {}))
 
         # concepts
-        X = np.array([coord[0] for coord in self.coordinates.values()])
-        Y = np.array([coord[1] for coord in self.coordinates.values()])
-        Z = np.array([coord[2] for coord in self.coordinates.values()])
+        if args.transform:
+            # 3-dimensional roots
+            w1 = np.exp(2j * np.pi / 3)
+            w2 = np.exp(4j * np.pi / 3)
+
+            # 3x3 transformation matrix using the real and imaginary parts
+            A = np.array([
+                [1, w1.real, w2.real],
+                [0, w1.imag, w2.imag],
+                [1, 1, 1]
+            ])
+
+            # coordinates as 3 x N array
+            V = A @ np.array([self.coordinates[i] for i in self.nodes]).T  # 3 x N
+            X, Y, Z = V
+
+        else:
+            # coordinates as 3 x N array
+            V = np.array([self.coordinates[i] for i in self.nodes]).T  # 3 x N
+            X, Y, Z = V
+
         ax.scatter(X, Y, Z, color='blue')
         ax.set_axis_off()
 
         # annotations
-        for node, (x, y, z) in self.coordinates.items():
+        for node in self.nodes:
+            x, y, z = V[:, node]
             if args.concepts:
                 ax.text(x, y, z + 0.075 * self.N, ','.join(self.lattice.get_concept_new_extent(node)), color='grey', fontsize=2 * self.N, zorder=10)
                 ax.text(x, y, z - 0.075 * self.N, ','.join(self.lattice.get_concept_new_intent(node)), color='grey', fontsize=2 * self.N, zorder=10)
@@ -237,10 +257,11 @@ class DimDraw():
                 ax.text(x, y, z - 0.075 * self.N, node, color='grey', fontsize=2 * self.N, zorder=10)
 
         # connect concepts based on relations
-        relations = [(self.coordinates[a], self.coordinates[b]) for a, b in cover_relations(self.lattice)]
-        for (x0, y0, z0), (x1, y1, z1) in relations:
-            ax.plot([x0, x1], [y0, y1], [z0, z1], color='gray', alpha=0.5)
-
+        for i, j in cover_relations(self.lattice):
+            xi, yi, zi = V[:, i]
+            xj, yj, zj = V[:, j]
+            ax.plot([xi, xj], [yi, yj], [zi, zj], 'k-', color='gray', alpha=0.5)
+            
         if args.export:
             os.makedirs('output', exist_ok=True)
             # capture frames for video
