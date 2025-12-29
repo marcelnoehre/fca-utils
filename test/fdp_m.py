@@ -10,5 +10,5 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 from src.fca_utils.parser import decode_cxt
 from src.visualize.fdp_m import FDP_Additive_Features
 
-context = decode_cxt('../data/standard_lattices/N5.cxt')
-FDP_Additive_Features(context)
+context = decode_cxt('../data/test_data/containing_N5.cxt')
+FDP_Additive_Features(context).plot()

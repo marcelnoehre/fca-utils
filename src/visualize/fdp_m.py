@@ -169,3 +169,23 @@ class FDP_Additive_Features():
                 e_grav += -phi - (np.cos(phi) / np.sin(phi)) * (np.sin(phi_0)**2) + E1
 
         return e_grav
+    
+    def plot(self):
+        plt.figure(figsize=(8, 6))
+
+        coordinates = {}
+        for concept in self.concepts:
+            x, y = np.array(sum([self.vectors[m] for m in self.intents[concept]], np.zeros(2)))
+            coordinates[concept] = (x, -y)
+            plt.scatter(x, -y, color="blue", zorder=3)
+            plt.text(x, -y - 0.075 * self.N, concept, fontsize=12, ha='center', va='bottom', color='grey')
+
+        for (a, b) in cover_relations(self.lattice):
+            x0, y0 = np.array(coordinates[a])
+            x1, y1 = np.array(coordinates[b])
+            plt.plot([x0, x1], [y0, y1], color="black", zorder=2)
+
+        plt.axis("equal")
+        plt.axis("off")
+        plt.tight_layout()
+        plt.show()
