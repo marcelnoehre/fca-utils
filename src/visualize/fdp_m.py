@@ -67,24 +67,24 @@ class FDP_Additive_Features():
     def _get_concept_pos(self, concept, vectors):
         return sum([self.vectors[m] for m in self.intents[concept]], np.zeros(2))
 
-    def dist_concept_to_edge(self, c, a, b):
-        if np.array_equal(a, b):
-            return np.linalg.norm(c - a)
-        
-        # projection of c to the edge (a,b)
-        t = np.dot(c - a, b - a) / np.dot(b - a, b - a)
-        
-        # reduce to segment (clamping)
-        t = np.clip(t, 0.0, 1.0)
-        
-        return np.linalg.norm(c - (a + t * (b - a)))
-
-    def energy_rep(self, flat_vectors):
+    def _energy_rep(self, flat_vectors):
         vectors = flat_vectors.reshape(-1, 2)
         positions = [
             self._get_concept_pos(concept, vectors)
             for concept in self.concepts
         ]
+
+        def _dist_concept_to_edge(c, a, b):
+            if np.array_equal(a, b):
+                return np.linalg.norm(c - a)
+            
+            # projection of c to the edge (a,b)
+            t = np.dot(c - a, b - a) / np.dot(b - a, b - a)
+            
+            # reduce to segment (clamping)
+            t = np.clip(t, 0.0, 1.0)
+            
+            return np.linalg.norm(c - (a + t * (b - a)))
         
         e_rep = 0.0
         for c, pos in enumerate(positions):
@@ -94,12 +94,12 @@ class FDP_Additive_Features():
                     continue
 
                 # add distance of c to edge (a,b)
-                dist = self.dist_concept_to_edge(pos, positions[a], positions[b])
+                dist = _dist_concept_to_edge(pos, positions[a], positions[b])
                 e_rep += 1.0 / (dist + self.epsilon)
 
         return e_rep
     
-    def energy_att(self, flat_vectors):
+    def _energy_att(self, flat_vectors):
         vectors = flat_vectors.reshape(-1, 2)
         positions = [
             self._get_concept_pos(concept, vectors)
@@ -112,3 +112,28 @@ class FDP_Additive_Features():
             e_att += np.sum((positions[b] - positions[a])**2)
 
         return e_att
+    
+    def _energy_grav(self, flat_vectors):
+        vectors = flat_vectors.reshape(-1, 2)
+        
+        phi_0 = np.pi / (self.N + 1)
+        E0 = -(phi_0 + np.sin(phi_0) * np.cos(phi_0))
+        E1 = (np.pi - phi_0) - np.sin(phi_0) * np.cos(phi_0)
+
+        e_grav = 0.0
+
+        for n_i in vectors:
+            x, y = n_i
+
+            # (0, pi)
+            phi = np.arctan2(y, x)
+
+            # Case 1: too far on right
+            if 0 < phi < phi_0:
+                e_grav += phi + (np.cos(phi) / np.sin(phi)) * (np.sin(phi_0)**2) + E0
+
+            # Case 2: too far on left
+            elif (np.pi - phi_0) < phi < np.pi:
+                e_grav += -phi - (np.cos(phi) / np.sin(phi)) * (np.sin(phi_0)**2) + E1
+
+        return e_grav
