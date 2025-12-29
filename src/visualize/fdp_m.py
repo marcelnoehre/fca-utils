@@ -5,6 +5,8 @@ from scipy.optimize import minimize
 from fcapy.context import FormalContext
 from fcapy.lattice import ConceptLattice
 
+from src.fca_utils.lattice import *
+
 class FDP_Additive_Features():
     
     def __init__(self,
@@ -19,6 +21,12 @@ class FDP_Additive_Features():
             for m in self.attributes
         }
         self.N = len(self.attributes)
+        self.epsilon = 1e-6
+        self.concepts = self.lattice.to_networkx().nodes
+        self.intents = {
+            concept: [val for _, val in intent_of_concept(self.lattice, concept)]
+            for concept in self.concepts
+        }
         self._sup_inf_distance()
         self._optimize_init_energy()
 
@@ -35,7 +43,6 @@ class FDP_Additive_Features():
                 dsi = len(intent_i.intersection(intent_j)) - len(intent_i.union(intent_j)) - 1
                 self.dsi_matrix[m_i][m_j] = dsi
                 self.dsi_matrix[m_j][m_i] = dsi
-
 
     def _optimize_init_energy(self):
         optimized = list(self.attribute_map.values())
@@ -56,3 +63,38 @@ class FDP_Additive_Features():
             m: np.array([res.x[i], -1])
             for m, i in self.attribute_map.items()
         }
+
+    def _get_concept_pos(self, concept, vectors):
+        return sum([self.vectors[m] for m in self.intents[concept]], np.zeros(2))
+
+    def dist_concept_to_edge(self, c, a, b):
+        if np.array_equal(a, b):
+            return np.linalg.norm(c - a)
+        
+        # projection of c to the edge (a,b)
+        t = np.dot(c - a, b - a) / np.dot(b - a, b - a)
+        
+        # reduce to segment (clamping)
+        t = np.clip(t, 0.0, 1.0)
+        
+        return np.linalg.norm(c - (a + t * (b - a)))
+
+    def energy_rep(self, flat_vectors):
+        vectors = flat_vectors.reshape(-1, 2)
+        positions = [
+            self._get_concept_pos(concept, vectors)
+            for concept in self.concepts
+        ]
+        
+        e_rep = 0.0
+        for c, pos in enumerate(positions):
+            for (a, b) in cover_relations(self.lattice):
+                # edges without concept c
+                if c == a or c == b:
+                    continue
+
+                # add distance of c to edge (a,b)
+                dist = self.dist_concept_to_edge(pos, positions[a], positions[b])
+                e_rep += 1.0 / (dist + self.epsilon)
+
+        return e_rep
