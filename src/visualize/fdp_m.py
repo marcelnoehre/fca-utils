@@ -98,3 +98,17 @@ class FDP_Additive_Features():
                 e_rep += 1.0 / (dist + self.epsilon)
 
         return e_rep
+    
+    def energy_att(self, flat_vectors):
+        vectors = flat_vectors.reshape(-1, 2)
+        positions = [
+            self._get_concept_pos(concept, vectors)
+            for concept in self.concepts
+        ]
+
+        e_att = 0.0
+        for (a, b) in cover_relations(self.lattice):
+            # |pos(b) - pos(a)|^2
+            e_att += np.sum((positions[b] - positions[a])**2)
+
+        return e_att
