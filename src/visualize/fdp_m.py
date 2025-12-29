@@ -18,13 +18,18 @@ class FDP_Additive_Features():
     ----------
     context : FormalContext
         The Formal Context
+    repetitions : int
+        Repetitions with different initial spring layouts
 
     Reference
     ---------
     Zschalig, Christian. Ein Force Directed Placement Algorithmus zum Zeichnen von
     Liniendiagrammen von Verbände, 2002.
     '''
-    def __init__(self, context: FormalContext):
+    def __init__(self,
+            context: FormalContext,
+            repetitions: int
+        ):
         self.context = context
         self.lattice = ConceptLattice.from_context(self.context)
         self.attributes = self.context.attribute_names
@@ -33,6 +38,7 @@ class FDP_Additive_Features():
             m: set(context.intention(context.extension([m])))
             for m in self.attributes
         }
+        self.score = np.inf
         self.N = len(self.attributes)
         self.epsilon = 1e-6
         self.concepts = self.lattice.to_networkx().nodes
@@ -41,8 +47,9 @@ class FDP_Additive_Features():
             for concept in self.concepts
         }
         self._sup_inf_distance()
-        self._initialize_vectors()
-        self._optimize_layout()
+        for _ in range(repetitions):
+            self._initialize_vectors()
+            self._optimize_layout()
 
     def plot(self):
         '''
@@ -51,17 +58,15 @@ class FDP_Additive_Features():
         plt.figure(figsize=(8, 6))
         
         # vertices
-        coordinates = {}
         for concept in self.concepts:
-            x, y = np.array(sum([self.vectors[m] for m in self.intents[concept]], np.zeros(2)))
-            coordinates[concept] = (x, -y)
-            plt.scatter(x, -y, color="blue", zorder=3)
-            plt.text(x, -y - 0.075 * self.N, concept, fontsize=12, ha='center', va='bottom', color='grey')
+            (x, y) = self.coordinates[concept]
+            plt.scatter(x, y, color="blue", zorder=3)
+            plt.text(x, y - 0.075 * self.N, concept, fontsize=12, ha='center', va='bottom', color='grey')
 
         # edges
         for (a, b) in cover_relations(self.lattice):
-            x0, y0 = np.array(coordinates[a])
-            x1, y1 = np.array(coordinates[b])
+            x0, y0 = np.array(self.coordinates[a])
+            x1, y1 = np.array(self.coordinates[b])
             plt.plot([x0, x1], [y0, y1], color="black", zorder=2)
 
         plt.axis("equal")
@@ -162,6 +167,12 @@ class FDP_Additive_Features():
         optimized_matrix = res.x.reshape(-1, 2)
         for i, m in enumerate(self.attributes):
             self.vectors[m] = optimized_matrix[i]
+        
+        if res.fun < self.score:
+            self.coordinates = {}
+            for concept in self.concepts:
+                x, y = np.array(sum([self.vectors[m] for m in self.intents[concept]], np.zeros(2)))
+                self.coordinates[concept] = (x, -y)
 
     def _total_energy(self, flat_vectors):
         '''

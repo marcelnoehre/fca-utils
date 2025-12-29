@@ -12,5 +12,5 @@ from src.visualize.fdp_m import FDP_Additive_Features
 
 context = decode_cxt('../data/standard_lattices/B3.cxt')
 
-fdp = FDP_Additive_Features(context)
+fdp = FDP_Additive_Features(context, 3)
 fdp.plot()
