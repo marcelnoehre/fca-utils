@@ -5,6 +5,7 @@ from itertools import combinations
 from scipy.optimize import minimize
 from fcapy.context import FormalContext
 from fcapy.lattice import ConceptLattice
+from scipy.spatial.distance import pdist, squareform
 
 from src.fca_utils.lattice import *
 
@@ -29,42 +30,60 @@ class FDP_Additive_Features():
             for concept in self.concepts
         }
         self._sup_inf_distance()
-        self._optimize_init_energy()
+        self._initialize_vectors()
         self._optimize_layout()
 
     def _sup_inf_distance(self):
         self.dsi_matrix = np.zeros((self.N, self.N))
-        for i, j in combinations(self.attributes, 2):
-            m_i, m_j = self.attribute_map[i], self.attribute_map[j]
-            intent_i = self.attribute_closures[i]
-            intent_j = self.attribute_closures[j]
+        for i, j in combinations(range(self.N), 2):
+            d = len(self.attribute_closures[self.attributes[i]] ^ self.attribute_closures[self.attributes[j]])
+            self.dsi_matrix[i, j] = self.dsi_matrix[j, i] = d
 
-            # check if comparable
-            if not (intent_i.issubset(intent_j) or intent_j.issubset(intent_i)):
-                # inf_size - sup_size - 1 
-                dsi = len(intent_i.intersection(intent_j)) - len(intent_i.union(intent_j)) - 1
-                self.dsi_matrix[m_i][m_j] = dsi
-                self.dsi_matrix[m_j][m_i] = dsi
-
-    def _optimize_init_energy(self):
-        optimized = list(self.attribute_map.values())
-
-        def _energy_si(opt):
-            total_energy = 0
+    def _solve_spring_model(self):
+        def e_si(flat_pts):
+            pts = flat_pts.reshape(-1, 2)
+            e_si = 0
             for i, j in combinations(range(self.N), 2):
-                dsi = abs(self.dsi_matrix[i, j])
-                if dsi > 0:
-                    dist = abs(opt[i] - opt[j])
-                    # (|pos(i) - pos(j)| - d_SI(i, j))^2
-                    total_energy += (dsi - dist)**2
+                dist = np.linalg.norm(pts[i] - pts[j])
+                e_si += (dist - self.dsi_matrix[i, j])**2
+            return e_si
 
-            return total_energy
+        res = minimize(e_si, np.random.rand(self.N * 2), method='BFGS')
+        return res.x.reshape(-1, 2)
 
-        res = minimize(_energy_si, optimized, method='BFGS')
-        self.vectors = {
-            m: np.array([res.x[i], 1.0])
-            for m, i in self.attribute_map.items()
-        }
+    def _get_longest_path(self, spring_pts):
+        # spring_pts is an (N, 2) array from the spring model
+        dists = squareform(pdist(spring_pts))
+        # Find indices of the maximum distance
+        i, j = np.unravel_index(np.argmax(dists), dists.shape)
+        return i, j, spring_pts[i], spring_pts[j]
+
+    def _rotate_layout(self, spring_pts):
+        i, j, p1, p2 = self._get_longest_path(spring_pts)
+        
+        # Vector of the longest path
+        vec = p2 - p1
+        angle = -np.arctan2(vec[1], vec[0])
+        
+        # Rotation matrix
+        rot = np.array([
+            [np.cos(angle), -np.sin(angle)],
+            [np.sin(angle),  np.cos(angle)]
+        ])
+        
+        # Rotate all points
+        rotated_pts = spring_pts @ rot.T
+        return rotated_pts
+    
+    def _initialize_vectors(self):
+        spring_pts = self._solve_spring_model()
+        rotated_pts = self._rotate_layout(spring_pts)
+        order = np.argsort(rotated_pts[:, 0])
+        
+        self.vectors = {}
+        for i, idx in enumerate(order):
+            x = -1 + 2 * (i / (self.N - 1))
+            self.vectors[self.attributes[idx]] = np.array([x, x**2]) + np.random.normal(0, 0.01, size=2)
 
     def _get_concept_pos(self, concept, vectors):
         indices = [self.attribute_map[m] for m in self.intents[concept]]
@@ -82,10 +101,8 @@ class FDP_Additive_Features():
         optimized_flat = res.x
         optimized_matrix = optimized_flat.reshape(-1, 2)
         for i, m in enumerate(self.attributes):
-            print('old', self.vectors[m])
-            print('new', optimized_matrix[i])
             self.vectors[m] = optimized_matrix[i]
-    
+
     def _total_energy(self, flat_vectors):
         # forces
         e_rep = self._energy_rep(flat_vectors)
@@ -149,30 +166,38 @@ class FDP_Additive_Features():
         vectors = flat_vectors.reshape(-1, 2)
         
         phi_0 = np.pi / (self.N + 1)
-        E0 = -(phi_0 + np.sin(phi_0) * np.cos(phi_0))
+        # Correct integration constants from thesis page 34
+        E0 = -phi_0 - np.sin(phi_0) * np.cos(phi_0)
         E1 = (np.pi - phi_0) - np.sin(phi_0) * np.cos(phi_0)
 
         e_grav = 0.0
 
         for n_i in vectors:
             x, y = n_i
+            phi = np.arctan2(y, x) # Returns (-pi, pi]
 
-            # (0, pi)
-            phi = np.arctan2(y, x)
+            # 1. Total Barrier for the lower half-plane (y <= 0)
+            # If the vector points down or flat, we apply a massive penalty 
+            # to force the optimizer back into the (0, pi) range.
+            if phi <= 0:
+                # We use a large constant plus a distance penalty
+                e_grav += 1e6 * (abs(phi) + 1.0)
+                continue
 
-            # Case 1: too far on right
-            if 0 < phi < phi_0:
+            # 2. Case 1: Angle is too small (too far right, phi < phi_0)
+            if phi < phi_0:
+                # The cotangent (cos/sin) correctly goes to infinity as phi -> 0
                 e_grav += phi + (np.cos(phi) / np.sin(phi)) * (np.sin(phi_0)**2) + E0
 
-            # Case 2: too far on left
-            elif (np.pi - phi_0) < phi < np.pi:
+            # 3. Case 2: Angle is too large (too far left, phi > pi - phi_0)
+            elif phi > (np.pi - phi_0):
+                # The cotangent correctly goes to infinity as phi -> pi
                 e_grav += -phi - (np.cos(phi) / np.sin(phi)) * (np.sin(phi_0)**2) + E1
 
         return e_grav
     
     def plot(self):
         plt.figure(figsize=(8, 6))
-
         coordinates = {}
         for concept in self.concepts:
             x, y = np.array(sum([self.vectors[m] for m in self.intents[concept]], np.zeros(2)))
