@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 from itertools import combinations
 from scipy.optimize import minimize
@@ -29,6 +30,7 @@ class FDP_Additive_Features():
         }
         self._sup_inf_distance()
         self._optimize_init_energy()
+        self._optimize_layout()
 
     def _sup_inf_distance(self):
         self.dsi_matrix = np.zeros((self.N, self.N))
@@ -60,12 +62,42 @@ class FDP_Additive_Features():
 
         res = minimize(_energy_si, optimized, method='BFGS')
         self.vectors = {
-            m: np.array([res.x[i], -1])
+            m: np.array([res.x[i], 1.0])
             for m, i in self.attribute_map.items()
         }
 
     def _get_concept_pos(self, concept, vectors):
-        return sum([self.vectors[m] for m in self.intents[concept]], np.zeros(2))
+        indices = [self.attribute_map[m] for m in self.intents[concept]]
+        if not indices:
+            return np.zeros(2)
+        return np.sum(vectors[indices], axis=0)
+
+    def _optimize_layout(self):
+        res = minimize(
+            self._total_energy,
+            np.array([self.vectors[m] for m in self.attributes]).flatten(),
+            method='CG',
+            options={'maxiter': 100, 'disp': True}
+        )
+        optimized_flat = res.x
+        optimized_matrix = optimized_flat.reshape(-1, 2)
+        for i, m in enumerate(self.attributes):
+            print('old', self.vectors[m])
+            print('new', optimized_matrix[i])
+            self.vectors[m] = optimized_matrix[i]
+    
+    def _total_energy(self, flat_vectors):
+        # forces
+        e_rep = self._energy_rep(flat_vectors)
+        e_att = self._energy_att(flat_vectors)
+        e_grav = self._energy_grav(flat_vectors)
+
+        # weights
+        r = 1.0
+        a = 0.5
+        g = 0.2
+
+        return r * e_rep + a * e_att + g * e_grav
 
     def _energy_rep(self, flat_vectors):
         vectors = flat_vectors.reshape(-1, 2)
