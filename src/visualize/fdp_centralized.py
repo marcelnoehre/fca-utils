@@ -66,6 +66,37 @@ class FDP_Additive_Centralized():
         self.score = np.inf
         self.epsilon = 1e-6
         self._sup_inf_distance()
-        for _ in range(repetitions):
-            self._initialize_vectors()
-            self._optimize_layout()
+        # for _ in range(repetitions):
+        #     self._initialize_vectors()
+        #     self._optimize_layout()
+
+    def _sup_inf_distance(self):
+        '''
+        Supremum Infimum Distance for each combination of attributes.
+        '''
+        self.dsi_matrix = np.zeros((self.N_m + self.N_g, self.N_m + self.N_g))
+        for i, j in combinations(range(self.N_m + self.N_g), 2):
+            # M x M
+            if i < self.N_m and j < self.N_m:
+                d = len(self.attribute_closures[self.attributes[i]] ^
+                        self.attribute_closures[self.attributes[j]])
+            # G x G
+            elif i >= self.N_m and j >= self.N_m:
+                d = len(self.object_closures[self.objects[i - self.N_m]] ^
+                        self.object_closures[self.objects[j - self.N_m]])
+            # (M x G) v (G x M)
+            else:
+                # attributes of i
+                if i < self.N_m:
+                    val_i = self.attribute_closures[self.attributes[i]]
+                else:
+                    val_i = self.object_descriptions[self.objects[i - self.N_m]]
+                # attributes of j
+                if j < self.N_m:
+                    val_j = self.attribute_closures[self.attributes[j]]
+                else:
+                    val_j = self.object_descriptions[self.objects[j - self.N_m]]
+
+                d = len(val_i ^ val_j)
+
+            self.dsi_matrix[i, j] = self.dsi_matrix[j, i] = d
