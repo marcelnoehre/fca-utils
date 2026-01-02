@@ -66,8 +66,8 @@ class FDP_Additive_Centralized():
         self.score = np.inf
         self.epsilon = 1e-6
         self._sup_inf_distance()
-        # for _ in range(repetitions):
-        #     self._initialize_vectors()
+        for _ in range(repetitions):
+            self._initialize_vectors()
         #     self._optimize_layout()
 
     def _sup_inf_distance(self):
@@ -100,3 +100,54 @@ class FDP_Additive_Centralized():
                 d = len(val_i ^ val_j)
 
             self.dsi_matrix[i, j] = self.dsi_matrix[j, i] = d
+
+    def _solve_spring_model(self):
+        '''
+        Compute initial spring model by minimizing the systems energy.
+        '''
+        def e_si(flat_pts):
+            '''
+            Compute the energy of the sup-inf system. 
+            '''
+            pts = flat_pts.reshape(-1, 2)
+            e_si = 0
+            for i, j in combinations(range(self.N_m + self.N_g), 2):
+                # (|n_i - n_j| - d_SI(n_i, n_j))^2
+                dist = np.linalg.norm(pts[i] - pts[j])
+                e_si += (dist - self.dsi_matrix[i, j])**2
+            return e_si
+
+        res = minimize(e_si, np.random.rand((self.N_m + self.N_g) * 2), method='BFGS')
+        return res.x.reshape(-1, 2)
+
+    def _initialize_vectors(self):
+        '''
+        Compute initial object and attribute vectors by minimizing the difference
+        between the geometric distance and sup inf distance.
+        '''
+        # intial spring layout
+        spring_pts = self._solve_spring_model()
+        
+        # longest path
+        dists = squareform(pdist(spring_pts))
+        i, j = np.unravel_index(np.argmax(dists), dists.shape)
+        vec = spring_pts[j] - spring_pts[i]
+        angle = -np.arctan2(vec[1], vec[0])
+        
+        # rotation
+        rot = np.array([
+            [np.cos(angle), -np.sin(angle)],
+            [np.sin(angle),  np.cos(angle)]
+        ])
+        rotated_pts = spring_pts @ rot.T
+
+        # initial attribute vectors        
+        order = np.argsort(rotated_pts[:, 0])
+        self.vectors = {}
+
+        for i, idx in enumerate(order):
+            x = -1 + 2 * (i / (self.N_m + self.N_g - 1))
+            if idx < self.N_m:
+                self.vectors[self.attributes[idx]] = np.array([x, x**2]) + np.random.normal(0, 0.01, size=2)
+            else:
+                self.vectors[self.objects[idx - self.N_m]] = np.array([x, x**2]) + np.random.normal(0, 0.01, size=2)
