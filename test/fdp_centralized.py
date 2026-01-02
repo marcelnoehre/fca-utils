@@ -13,3 +13,4 @@ from src.visualize.fdp_centralized import FDP_Additive_Centralized
 context = decode_cxt('../data/standard_lattices/B3.cxt')
 
 fdp = FDP_Additive_Centralized(context, 3)
+fdp.plot()
