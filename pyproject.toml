@@ -1,0 +1,19 @@
+[project]
+name = "fca-utils"
+version = "0.1.0"
+description = "Utility functions for research in the field of Formal Concept Analysis"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "fcapy>=0.1.4.5",
+    "networkx>=3.6.1",
+    "pandas>=3.0.1",
+    "python-sat>=1.9.dev2",
+    "z3-solver>=4.16.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fca", "src/data", "src/draw", "src/linear_extension", "src/visualize"]
